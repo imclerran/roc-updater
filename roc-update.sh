@@ -14,6 +14,30 @@ roc_dir=$(which roc | xargs dirname)
 
 cd $(dirname $roc_dir)
 
+# Determine the OS and architecture
+OS=$(uname -s)
+ARCH=$(uname -m)
+
+case "$OS" in
+    Linux)
+        case "$ARCH" in
+            x86_64) FILENAME="roc_nightly-linux_x86_64-latest.tar.gz" ;;
+            aarch64) FILENAME="roc_nightly-linux_arm64-latest.tar.gz" ;;
+            *) echo -e "$CROSSMARK Unsupported architecture: $ARCH"; exit 1 ;;
+        esac
+        ;;
+    Darwin)
+        case "$ARCH" in
+            x86_64) FILENAME="roc_nightly-macos_x86_64-latest.tar.gz" ;;
+            arm64) FILENAME="roc_nightly-macos_apple_silicon-latest.tar.gz" ;;
+            *) echo -e "$CROSSMARK Unsupported architecture: $ARCH"; exit 1 ;;
+        esac
+        ;;
+    *)
+        echo -e "$CROSSMARK Unsupported OS: $OS"; exit 1
+        ;;
+esac
+
 # Check if gh is installed and authenticated
 if command -v gh &> /dev/null && gh auth status &> /dev/null; then
     echo -n "Checking for updates... "
@@ -31,40 +55,40 @@ if command -v gh &> /dev/null && gh auth status &> /dev/null; then
     # Check if the latest release is more than 1 hour newer than the current build
     if [ "$((latest_release_date_unix - roc_build_date_unix))" -le 3600 ]; then
         echo "No new update available."
-        echo "Current roc version: ${PURPLE}${roc_version_output}${NC}"
+        echo -e "Current roc version: ${PURPLE}${roc_version_output}${NC}"
         exit 0
     fi
 else
-    echo -n "$CROSSMARK \`gh\` not available. Cannot compare installed version with latest release.\n"
+    echo -e "$CROSSMARK \`gh\` not available. Cannot compare installed version with latest release."
 fi
 
 echo -n "Downloading latest Roc nightly build... "
-curl -sOL https://github.com/roc-lang/roc/releases/download/nightly/roc_nightly-macos_apple_silicon-latest.tar.gz \
+curl -sOL "https://github.com/roc-lang/roc/releases/download/nightly/$FILENAME" \
 && echo -e "$CHECKMARK" || {
     echo -e "$CROSSMARK Failed to download Roc nightly build"; exit 1;
 }
 
 echo -n "Extracting tar file... "
-tar xf roc_nightly-macos_apple_silicon-latest.tar.gz \
+tar xf "$FILENAME" \
 && echo -e "$CHECKMARK" || {
-    rm roc_nightly-macos_apple_silicon-latest.tar.gz
+    rm "$FILENAME"
     echo "Failed to extract tar file"; exit 1;
 }
 
 mv "$roc_dir" "${roc_dir}-old"
-mv roc_nightly-macos_apple_silicon-20* "$roc_dir"
+mv roc_nightly-* "$roc_dir"
 
 roc_version=$(roc version)
 if [ $? -eq 0 ]; then
     echo -n "Cleaning up... "
     rm -rf "${roc_dir}-old"
-    rm roc_nightly-macos_apple_silicon-latest.tar.gz
+    rm "$FILENAME"
     echo -e "$CHECKMARK"
-    echo "Updated Roc to: ${PURPLE}${roc_version}${NC}"
+    echo -e "Updated Roc to: ${PURPLE}${roc_version}${NC}"
 else
     echo -e "$CROSSMARK Failed to update Roc. Reverting changes..."
-    rm -rf roc_nightly-macos_apple_silicon-20*
-    rm roc_nightly-macos_apple_silicon-latest.tar.gz
+    rm -rf roc_nightly-*
+    rm "$FILENAME"
     mv "${roc_dir}-old" "$roc_dir"
     echo -e "Reverted Roc to ${PURPLE}$(roc version)${NC}"
 fi
