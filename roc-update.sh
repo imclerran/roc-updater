@@ -74,21 +74,21 @@ tar xf "$FILENAME" \
     rm "$FILENAME"
     echo "Failed to extract tar file"; exit 1;
 }
+rm "$FILENAME"
 
-mv "$roc_dir" "${roc_dir}-old"
+mv "$roc_dir" "roc-old"
 mv roc_nightly-* "$roc_dir"
 
 roc_version=$(roc version)
 if [ $? -eq 0 ]; then
     echo -n "Cleaning up... "
-    rm -rf "${roc_dir}-old"
-    rm "$FILENAME"
+    rm -rf "roc-old"
     echo -e "$CHECKMARK"
     echo -e "Updated Roc to: ${PURPLE}${roc_version}${NC}"
 else
     echo -e "$CROSSMARK Failed to update Roc. Reverting changes..."
     rm -rf roc_nightly-*
     rm "$FILENAME"
-    mv "${roc_dir}-old" "$roc_dir"
+    mv "roc-old" "$roc_dir"
     echo -e "Reverted Roc to ${PURPLE}$(roc version)${NC}"
 fi
